@@ -1,7 +1,7 @@
-// index.tsx
 import axios from 'axios';
 import React, { useEffect } from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import Hero from './Hero'; // Import the Hero component
 
 const apiUrl = 'https://pos-backend-xtd3.onrender.com'; // Replace with your backend URL
 
@@ -15,15 +15,23 @@ const Index = () => {
         console.error('Error:', error);
       }
     };
-
+    
     pingBackend();
   }, []); // Empty dependency array ensures it runs once when the component mounts
-
+  
   return (
-    <View>
-      <Text>Check your console for the response!</Text>
+    <View style={styles.container}>
+      <Hero />
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#1a1a1f',
+    padding: 20,
+  },
+});
 
 export default Index;
