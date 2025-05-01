@@ -2,15 +2,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError } from 'axios';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Image,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+
+// Import router from expo-router for navigation
+import { router } from 'expo-router';
 
 const apiUrl = 'https://pos-backend-xdt3.onrender.com'; // Update to match your backend port if needed
 
@@ -36,16 +39,26 @@ const Hero = () => {
 
       const { token, user } = response.data;
 
-      // Store token based on platform
-      if (Platform.OS === 'web') {
-        localStorage.setItem('authToken', token);
-      } else {
-        await AsyncStorage.setItem('authToken', token);
+      // Store token based on platform, with error handling
+      try {
+        if (Platform.OS === 'web') {
+          localStorage.setItem('authToken', token);
+        } else {
+          await AsyncStorage.setItem('authToken', token);
+        }
+      } catch (e) {
+        console.warn('Storage access failed:', e);
       }
 
       Alert.alert('Success', `Welcome back, ${user.username}!`);
+
+      // Reset form
       setUsername('');
       setPassword('');
+
+      // Navigate to LandingPage
+      router.push('/LandingPage');
+
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       console.error('Signin error:', err);
@@ -68,7 +81,6 @@ const Hero = () => {
           <Text style={styles.heroTitle}>Capturing Moments,</Text>
           <Text style={styles.heroTitle}>Creating Memories</Text>
         </View>
-        
       </View>
 
       {/* Right Panel - Form */}
@@ -93,7 +105,6 @@ const Hero = () => {
               value={password}
               onChangeText={setPassword}
             />
-            
           </View>
 
           <TouchableOpacity
@@ -149,7 +160,6 @@ const styles = StyleSheet.create({
     color: 'white',
     marginBottom: 5,
   },
-
   rightPanel: {
     flex: 1,
     backgroundColor: '#222',
@@ -178,15 +188,6 @@ const styles = StyleSheet.create({
   passwordContainer: {
     position: 'relative',
     marginBottom: 16,
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: 16,
-    top: 12,
-  },
-  eyeIconText: {
-    fontSize: 18,
-    color: '#999',
   },
   createButton: {
     backgroundColor: '#7b68ee',
