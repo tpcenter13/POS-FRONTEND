@@ -6,6 +6,7 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
+  Linking,
   Modal,
   StyleSheet,
   Text,
@@ -23,7 +24,7 @@ type RootStackParamList = {
 export default function MenuButton() {
   const [visible, setVisible] = useState(false);
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
-  const [activeMenu, setActiveMenu] = useState("Point of Sales"); // Track active menu item
+  const [activeMenu, setActiveMenu] = useState("Point of Sales");
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const fetchUser = async () => {
@@ -40,24 +41,37 @@ export default function MenuButton() {
           Accept: "application/json",
         },
       });
-      
+
       setUser({
         name: res.data.name,
-        role: res.data.role
+        role: res.data.role,
       });
-      
+
       console.log("User fetched successfully:", res.data);
     } catch (error: any) {
       console.error("Failed to fetch user:", error.response?.data || error.message);
-      
+
       if (error.response?.status === 401) {
         console.log("Token expired or invalid - redirecting to login");
         await AsyncStorage.removeItem("authToken");
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "Hero" }],
-        });
+        navigation.push("Hero");
       }
+    }
+  };
+
+  // New function to validate token
+  const validateToken = async (token: string): Promise<boolean> => {
+    try {
+      const res = await axios.get("http://127.0.0.1:8000/api/user", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      });
+      return res.status === 200;
+    } catch (error: any) {
+      console.error("Token validation failed:", error.response?.data || error.message);
+      return false;
     }
   };
 
@@ -65,14 +79,22 @@ export default function MenuButton() {
     try {
       const token = await AsyncStorage.getItem("authToken");
       console.log("Token:", token);
-      
+
       if (!token) {
         Alert.alert("Error", "No token found. You are already logged out.");
         setVisible(false);
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "Hero" }],
-        });
+        navigation.push("Hero");
+        return;
+      }
+
+      // Validate token before logout
+      const isValid = await validateToken(token);
+      if (!isValid) {
+        console.log("Invalid token - clearing and redirecting to Hero");
+        await AsyncStorage.removeItem("authToken");
+        setUser(null);
+        setVisible(false);
+        navigation.push("Hero");
         return;
       }
 
@@ -80,7 +102,7 @@ export default function MenuButton() {
         Authorization: `Bearer ${token}`,
         Accept: "application/json",
       });
-      
+
       const response = await axios.post(
         "http://127.0.0.1:8000/api/logout",
         {},
@@ -91,29 +113,32 @@ export default function MenuButton() {
           },
         }
       );
-      
+
       await AsyncStorage.removeItem("authToken");
       setUser(null);
       Alert.alert("Success", response.data.message || "You have been logged out.");
       setVisible(false);
 
-      // Explicitly reset navigation to Hero screen
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "Hero" }],
-      });
+      // Navigate to Hero (login screen) instead of LandingPage
+      navigation.push("Hero");
+
+      // Open the external URL in the default browser
+      const url = "http://localhost:8081/";
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Error", "Cannot open URL: " + url);
+      }
     } catch (error: any) {
       console.error("Logout error:", error.response?.data || error.message);
       const message =
         error.response?.data?.message || "Failed to log out. Please try again.";
       Alert.alert("Error", message);
-      
+
       if (error.response?.status === 401) {
         await AsyncStorage.removeItem("authToken");
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "Hero" }],
-        });
+        navigation.push("Hero");
       }
     }
   };
@@ -128,10 +153,17 @@ export default function MenuButton() {
     const checkToken = async () => {
       const token = await AsyncStorage.getItem("authToken");
       if (token) {
-        fetchUser();
+        const isValid = await validateToken(token);
+        if (isValid) {
+          fetchUser();
+        } else {
+          console.log("Invalid token on check - clearing and redirecting to Hero");
+          await AsyncStorage.removeItem("authToken");
+          navigation.push("Hero");
+        }
       }
     };
-    
+
     checkToken();
   }, []);
 
