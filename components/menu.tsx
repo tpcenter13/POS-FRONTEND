@@ -16,11 +16,14 @@ import {
 type RootStackParamList = {
   Hero: undefined;
   Menu: undefined;
+  LandingPage: undefined;
+  Inventory: undefined;
 };
 
 export default function MenuButton() {
   const [visible, setVisible] = useState(false);
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
+  const [activeMenu, setActiveMenu] = useState("Point of Sales"); // Track active menu item
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const fetchUser = async () => {
@@ -94,6 +97,7 @@ export default function MenuButton() {
       Alert.alert("Success", response.data.message || "You have been logged out.");
       setVisible(false);
 
+      // Explicitly reset navigation to Hero screen
       navigation.reset({
         index: 0,
         routes: [{ name: "Hero" }],
@@ -153,10 +157,28 @@ export default function MenuButton() {
               <Text style={styles.role}>{user?.role || ""}</Text>
             </View>
 
-            <View style={styles.menuItem}>
-              <Ionicons name="laptop-outline" size={20} color="#5B9DF9" />
-              <Text style={styles.menuTextActive}>Point of Sales</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setActiveMenu("Point of Sales");
+                navigation.navigate("LandingPage");
+              }}
+            >
+              <Ionicons
+                name="laptop-outline"
+                size={20}
+                color={activeMenu === "Point of Sales" ? "#5B9DF9" : "#666"}
+              />
+              <Text
+                style={
+                  activeMenu === "Point of Sales"
+                    ? styles.menuTextActive
+                    : styles.menuText
+                }
+              >
+                Point of Sales
+              </Text>
+            </TouchableOpacity>
 
             <View style={styles.menuItem}>
               <Ionicons name="time-outline" size={20} color="#666" />
@@ -168,10 +190,28 @@ export default function MenuButton() {
               <Text style={styles.menuText}>Report</Text>
             </View>
 
-            <View style={styles.menuItem}>
-              <Ionicons name="cube-outline" size={20} color="#666" />
-              <Text style={styles.menuText}>Inventory</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setActiveMenu("Inventory");
+                navigation.navigate("Inventory");
+              }}
+            >
+              <Ionicons
+                name="cube-outline"
+                size={20}
+                color={activeMenu === "Inventory" ? "#5B9DF9" : "#666"}
+              />
+              <Text
+                style={
+                  activeMenu === "Inventory"
+                    ? styles.menuTextActive
+                    : styles.menuText
+                }
+              >
+                Inventory
+              </Text>
+            </TouchableOpacity>
 
             <View style={styles.menuItem}>
               <Ionicons name="people-outline" size={20} color="#666" />

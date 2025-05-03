@@ -1,3 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios, { AxiosError } from 'axios';
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,10 +13,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-import { router } from 'expo-router';
-import { AxiosError } from 'axios';
 
 // Local development server
 const apiUrl = 'http://127.0.0.1:8000';
@@ -28,23 +27,48 @@ export const Hero = () => {
     const checkAuth = async () => {
       try {
         let token: string | null = null;
-        if (Platform.OS === 'web') {
-          if (typeof window !== 'undefined' && window.localStorage) {
-            token = window.localStorage.getItem('authToken');
-          }
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+          token = window.localStorage.getItem('authToken');
         } else {
           token = await AsyncStorage.getItem('authToken');
         }
-
+        console.log('Checking auth token:', token);
         if (token) {
-          router.push('/LandingPage');
+          const isValid = await validateToken(token);
+          if (isValid) {
+            router.push('/LandingPage');
+          } else {
+            clearToken();
+          }
         }
       } catch (e) {
         console.warn('Failed to check auth token:', e);
+        clearToken();
       }
     };
     checkAuth();
   }, []);
+
+  const validateToken = async (token: string) => {
+    try {
+      await axios.get(`${apiUrl}/api/products`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Token validated successfully');
+      return true;
+    } catch (error) {
+      console.error('Token validation failed:', error);
+      return false;
+    }
+  };
+
+  const clearToken = async () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem('authToken');
+    } else {
+      await AsyncStorage.removeItem('authToken');
+    }
+  };
 
   const handleSignIn = async () => {
     if (!username || !password) {
@@ -56,38 +80,26 @@ export const Hero = () => {
 
     try {
       const response = await axios.post(`${apiUrl}/api/login`, {
-        email: username, // Updated to 'email' to match your backend expectation
+        email: username,
         password,
       }, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         timeout: 10000,
       });
 
       const { token, user } = response.data;
 
-      try {
-        if (Platform.OS === 'web') {
-          if (typeof window !== 'undefined' && window.localStorage) {
-            window.localStorage.setItem('authToken', token);
-          } else {
-            throw new Error('localStorage is not available');
-          }
-        } else {
-          await AsyncStorage.setItem('authToken', token);
-          await AsyncStorage.setItem('user', JSON.stringify(user));
-        }
-      } catch (e) {
-        console.warn('Storage access failed:', e);
-        Alert.alert('Warning', 'Sign-in successful, but failed to store token. You may need to sign in again.');
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('authToken', token);
+      } else {
+        await AsyncStorage.setItem('authToken', token);
+        await AsyncStorage.setItem('user', JSON.stringify(user));
       }
+      console.log('Token stored:', token);
 
-      Alert.alert('Success', `Welcome back, ${user.name}!`); // Updated to 'name' to match your backend
-
+      Alert.alert('Success', `Welcome back, ${user.name}!`);
       setUsername('');
       setPassword('');
-
       router.push('/LandingPage');
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
@@ -171,56 +183,56 @@ export const Hero = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: 'row' as const,
+    flexDirection: 'row',
     backgroundColor: '#222',
     borderRadius: 12,
     overflow: 'hidden',
-  } as const,
+  },
   leftPanel: {
     flex: 1,
     backgroundColor: '#7b68ee',
     padding: 24,
     justifyContent: 'space-between',
-  } as const,
+  },
   logo: {
     fontSize: 24,
-    fontWeight: 'bold' as const,
+    fontWeight: 'bold',
     color: 'white',
-  } as const,
+  },
   heroContentContainer: {
     flex: 1,
     justifyContent: 'center',
     marginBottom: 40,
-  } as const,
+  },
   heroImage: {
     width: '100%',
     height: 200,
     borderRadius: 8,
     marginBottom: 40,
-  } as const,
+  },
   heroTitle: {
     fontSize: 28,
-    fontWeight: 'bold' as const,
+    fontWeight: 'bold',
     color: 'white',
     marginBottom: 5,
-  } as const,
+  },
   rightPanel: {
     flex: 1,
     backgroundColor: '#222',
     padding: 24,
     justifyContent: 'center',
-  } as const,
+  },
   formContainer: {
     width: '100%',
     maxWidth: 400,
     alignSelf: 'center',
-  } as const,
+  },
   formTitle: {
     fontSize: 32,
-    fontWeight: 'bold' as const,
+    fontWeight: 'bold',
     color: 'white',
     marginBottom: 32,
-  } as const,
+  },
   input: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 8,
@@ -228,33 +240,32 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 16,
     color: 'white',
-  } as const,
+  },
   passwordContainer: {
-    position: 'relative' as const,
+    position: 'relative',
     marginBottom: 16,
-  } as const,
+  },
   showPasswordBtn: {
-    position: 'absolute' as const,
+    position: 'absolute',
     right: 16,
     top: 12,
-  } as const,
+  },
   showPasswordText: {
     color: '#7b68ee',
     fontSize: 14,
-  } as const,
+  },
   signInButton: {
     backgroundColor: '#7b68ee',
     borderRadius: 8,
     paddingVertical: 14,
-    alignItems: 'center' as const,
+    alignItems: 'center',
     marginBottom: 24,
-  } as const,
+  },
   buttonDisabled: {
     opacity: 0.6,
-  } as const,
+  },
   signInButtonText: {
     color: 'white',
-    fontWeight: 'bold' as const,
-  } as const,
+    fontWeight: 'bold',
+  },
 });
-
